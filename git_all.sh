@@ -1,15 +1,35 @@
 #!/bin/bash
 
+# Reads $DATA_FILE ($1), clones all repos to REPOS_DIR ($2), finds and pulls the
+# most-recent branch.
 
-# Reads $DATA_FILE, clones all repos not already cloned, finds and pulls
-# the most-recent branch.
+#set -e
+# This is intentionally not set because git can fail in many marvelous ways.
+# TODO gracefully handle any git failures and maybe produce a report.
 
 
 
-MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )" #location of this script
-DATA_FILE="${MY_DIR}/ssh_urls"
-REPOS_DIR="$MY_DIR/repos"
+### Init ###
+
+DATA_FILE="$1"
+REPOS_DIR="$2"
 NUM_REPOS=$(wc -l "$DATA_FILE" | awk '{print $1}')
+
+if [ ! -r "$DATA_FILE" ]; then
+  echo "Can't read data file '$DATA_FILE', aborting"
+  exit 1
+fi
+
+if [ ! -w "$REPOS_DIR" ]; then
+  echo "Can't write to '$REPOS_DIR', aborting"
+  exit 1
+fi
+
+echo "Data file is $DATA_FILE"
+echo "Repos dir is $REPOS_DIR"
+
+
+### Main ###
 
 CURRENT_NUM=1
 cd "$REPOS_DIR"
@@ -38,4 +58,4 @@ while read REPO_URL; do
 
   CURRENT_NUM=$((++CURRENT_NUM))
   sleep 1 # just to avoid hitting any rate limits
-done <${DATA_FILE}
+done <"${DATA_FILE}"

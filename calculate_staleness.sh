@@ -2,49 +2,67 @@
 set -e
 
 # config
-MJS_DEBUG=false
+ENABLE_DEBUG_OUTPUT=false
 OLD_AGE_DAYS=1095
 FEW_FILES=10
 TINY_KB=8
 
 
 
-STATS_FILE=$1
-NOW=$(date +%s)
-MY_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )" #location of this script
-REPOS_DIR="$MY_DIR/repos"
-DATA_FILE="${MY_DIR}/ssh_urls"
+### Functions ###
 
 usage() {
-  echo "USAGE: $0 <filename.csv>"
+  echo "USAGE: $0 <file_of_git_urls> <directory_full_of_git_repos> <output.csv>"
   echo
-  echo "This script assumes that all repos exist in ./repos and have already been"
-  echo "cloned / pulled with the latest branch."
   exit 1
 }
-
 
 # Quick n dirty!  Global vars!
 writeRepoStats() {
   LINE=${HEAT},"\"https://github.com/TheWeatherCompany/${REPO_NAME}\",\"${HEAT_REASON}\",\"${LAST_COMMIT_BRANCH}\",\"${LAST_COMMIT_DATE}\",${NUM_COMMITS},${NUM_FILES},${DISK_SIZE_CONTENT}"
-  if $MJS_DEBUG; then
+  if $ENABLE_DEBUG_OUTPUT; then
     echo $LINE
     echo;
   else
-    echo $LINE >> "$MY_DIR/$STATS_FILE"
+    echo $LINE >> "$OUTPUT_FILE"
   fi
 }
 
 
-### Begin main ###
+### Init ###
+
+DATA_FILE="$1"
+REPOS_DIR="$2"
+OUTPUT_FILE="$3"
+NOW=$(date +%s)
+
+if [[ -z "$DATA_FILE" ]]; then usage; fi
+if [[ -z "$REPOS_DIR" ]]; then usage; fi
+if [[ -z "$OUTPUT_FILE" ]]; then usage; fi
+
+if [ ! -r "$DATA_FILE" ]; then
+  echo "Can't read data file '$DATA_FILE', aborting"
+  exit 1
+fi
+
+if [ ! -r "$REPOS_DIR" ]; then
+  echo "Can't read '$REPOS_DIR', aborting"
+  exit 1
+fi
+
+if [ ! -w "$(dirname $OUTPUT_FILE)" ]; then
+  echo "Can't write to '$(dirname $OUTPUT_FILE)', aborting"
+  exit 1
+fi
 
 
-if [[ -z "$STATS_FILE" ]]; then usage; fi
+### Main ###
+
 NUM_REPOS=$(wc -l "$DATA_FILE" | awk '{print $1}')
 
 #Write CSV header into new file
-if ! $MJS_DEBUG ; then
-  echo '"Heat","Repo URL","Heat Reasons","Latest branch","Last commit date","Number of commits","Number of files","Size of repo content (kb)"' > "$MY_DIR/$STATS_FILE"
+if ! $ENABLE_DEBUG_OUTPUT ; then
+  echo '"Heat","Repo URL","Heat Reasons","Latest branch","Last commit date","Number of commits","Number of files","Size of repo content (kb)"' > "$OUTPUT_FILE"
 fi
 
 CURRENT_NUM=0
@@ -92,7 +110,7 @@ while read REPO_URL; do
   DISK_SIZE_ACTUAL=$(du -k -s . | awk '{print $1}')
   DISK_SIZE_GIT=$(du -k -s .git | awk '{print $1}')
   DISK_SIZE_CONTENT=$(($DISK_SIZE_ACTUAL - $DISK_SIZE_GIT))
-  if $MJS_DEBUG; then
+  if $ENABLE_DEBUG_OUTPUT; then
     echo "NUM_COMMITS: ${NUM_COMMITS}"
     echo "LAST_COMMIT_DATE: ${LAST_COMMIT_DATE}"
     echo "LAST_COMMIT_UNIX: ${LAST_COMMIT_UNIX}"
